@@ -4,64 +4,64 @@ var querystring = require('querystring');
 var static = require('node-static');
 
 var fileServer = new static.Server('.');
-
+//клиенты, которые подписались
 var subscribers = {};
 
 function onSubscribe(req, res) {
-  var id = Math.random();
+   var id = Math.random();
 
-  res.setHeader('Content-Type', 'text/plain;charset=utf-8');
-  res.setHeader("Cache-Control", "no-cache, must-revalidate");
+   res.setHeader('Content-Type', 'text/plain;charset=utf-8');
+   res.setHeader("Cache-Control", "no-cache, must-revalidate");
 
-  subscribers[id] = res;
-  //console.log("новый клиент " + id + ", клиентов:" + Object.keys(subscribers).length);
+   subscribers[id] = res;
+   console.log("новый клиент " + id + ", клиентов:" + Object.keys(subscribers).length);
 
-  req.on('close', function() {
-    delete subscribers[id];
-    //console.log("клиент "+id+" отсоединился, клиентов:" + Object.keys(subscribers).length);
-  });
+   req.on('close', function () {
+      delete subscribers[id];
+      console.log("клиент " + id + " отсоединился, клиентов:" + Object.keys(subscribers).length);
+   });
 
 }
 
 function publish(message) {
 
-  //console.log("есть сообщение, клиентов:" + Object.keys(subscribers).length);
+   console.log("есть сообщение, клиентов:" + Object.keys(subscribers).length);
 
-  for (var id in subscribers) {
-    //console.log("отсылаю сообщение " + id);
-    var res = subscribers[id];
-    res.end(message);
-  }
+   for (var id in subscribers) {
+      console.log("отсылаю сообщение " + id);
+      var res = subscribers[id];
+      res.end(message);
+   }
 
-  subscribers = {};
+   subscribers = {};
 }
 
 function accept(req, res) {
-  var urlParsed = url.parse(req.url, true);
+   var urlParsed = url.parse(req.url, true);
 
-  // новый клиент хочет получать сообщения
-  if (urlParsed.pathname == '/subscribe') {
-    onSubscribe(req, res); // собственно, подписка
-    return;
-  }
+   // новый клиент хочет получать сообщения
+   if (urlParsed.pathname == '/subscribe') {
+      onSubscribe(req, res); // собственно, подписка
+      return;
+   }
 
-  // отправка сообщения
-  if (urlParsed.pathname == '/publish' && req.method == 'POST') {
-    // принять POST-запрос
-    req.setEncoding('utf8');
-    var message = '';
-    req.on('data', function(chunk) {
-      message += chunk;
-    }).on('end', function() {
-      publish(message); // собственно, отправка
-      res.end("ok");
-    });
+   // отправка сообщения
+   if (urlParsed.pathname == '/publish' && req.method == 'POST') {
+      // принять POST-запрос
+      req.setEncoding('utf8');
+      var message = '';
+      req.on('data', function (chunk) {
+         message += chunk;
+      }).on('end', function () {
+         publish(message); // собственно, отправка
+         res.end("ok");
+      });
 
-    return;
-  }
+      return;
+   }
 
-  // всё остальное -- статика
-  fileServer.serve(req, res);
+   // всё остальное -- статика
+   fileServer.serve(req, res);
 
 }
 
@@ -69,15 +69,15 @@ function accept(req, res) {
 // -----------------------------------
 
 if (!module.parent) {
-  http.createServer(accept).listen(8080);
-  console.log('Server is running on port 8080');
+   http.createServer(accept).listen(8080);
+   console.log('Server is running on port 8080');
 } else {
-  exports.accept = accept;
+   exports.accept = accept;
 
-  process.on('SIGINT', function() {
-    for (var id in subscribers) {
-      var res = subscribers[id];
-      res.end();
-    }
-  });
+   process.on('SIGINT', function () {
+      for (var id in subscribers) {
+         var res = subscribers[id];
+         res.end();
+      }
+   });
 }
